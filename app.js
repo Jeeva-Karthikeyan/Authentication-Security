@@ -4,11 +4,12 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const md5 = require("md5");
 
 const app = express();
 
-console.log(process.env.API_KEY);
+console.log(md5("123456")); 
+//The hash that's created is always going to be the same
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -29,13 +30,6 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
-// const secret = "Thisisourlittlesecret.";
-// plugin : add to mongoose schemas to extend their functionality or give them more powers essentially 
-// actually the power is "encrypt"
-// userSchema.plugin(encrypt, {secret: secret}); // Encrypt the enire database
-userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"] }); // Encrypt oly certain fields
-// If yopu want multiple fields to encrypt ["password","email"]
-//Now we've added our encryption package to our userSchema,
 
 
 //now we can start creating Users and adding it to this endUserDB
@@ -60,7 +54,7 @@ app.post("/register", function (req, res) {
     //this is going to be created using that user model here
     const newUser = new User({
         email: req.body.username,
-        password: req.body.password
+        password: md5(req.body.password) //To turn that into a irreversible hash.
     });
 
     newUser.save(function (err) {
@@ -74,7 +68,7 @@ app.post("/register", function (req, res) {
 
 app.post("/login", function (req, res) {
     const username = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
     // username field comes from the user who's trying to log in 
     // and the email field is the one in our database that's got the saved data
