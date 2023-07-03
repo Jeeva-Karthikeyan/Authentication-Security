@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
 
 const app = express();
 
@@ -24,6 +25,15 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String
 });
+
+const secret = "Thisisourlittlesecret.";
+// plugin : add to mongoose schemas to extend their functionality or give them more powers essentially 
+// actually the power is "encrypt"
+// userSchema.plugin(encrypt, {secret: secret}); // Encrypt the enire database
+userSchema.plugin(encrypt, {secret: secret, encryptedFields: ["password"] }); // Encrypt oly certain fields
+// If yopu want multiple fields to encrypt ["password","email"]
+//Now we've added our encryption package to our userSchema,
+
 
 //now we can start creating Users and adding it to this endUserDB
 const User = new mongoose.model("User", userSchema);
