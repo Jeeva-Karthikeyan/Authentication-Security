@@ -1,4 +1,5 @@
 //jshint esversion:6
+require('dotenv').config()
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
@@ -6,6 +7,8 @@ const mongoose = require("mongoose");
 const encrypt = require("mongoose-encryption");
 
 const app = express();
+
+console.log(process.env.API_KEY);
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -26,11 +29,11 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
-const secret = "Thisisourlittlesecret.";
+// const secret = "Thisisourlittlesecret.";
 // plugin : add to mongoose schemas to extend their functionality or give them more powers essentially 
 // actually the power is "encrypt"
 // userSchema.plugin(encrypt, {secret: secret}); // Encrypt the enire database
-userSchema.plugin(encrypt, {secret: secret, encryptedFields: ["password"] }); // Encrypt oly certain fields
+userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"] }); // Encrypt oly certain fields
 // If yopu want multiple fields to encrypt ["password","email"]
 //Now we've added our encryption package to our userSchema,
 
@@ -90,6 +93,7 @@ app.post("/login", function (req, res) {
     });
 
 });
+
 
 app.get('/logout', function(req, res){
       res.redirect('/');
