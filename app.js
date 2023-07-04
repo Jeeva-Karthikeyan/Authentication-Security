@@ -4,11 +4,12 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app = express();
 
-console.log(md5("123456")); 
+// console.log(md5("123456")); 
 //The hash that's created is always going to be the same
 
 app.use(express.static("public"));
@@ -51,24 +52,26 @@ app.get("/register", function (req, res) {
 
 // Inside the callback is where we're going to create our brand new user
 app.post("/register", function (req, res) {
-    //this is going to be created using that user model here
-    const newUser = new User({
-        email: req.body.username,
-        password: md5(req.body.password) //To turn that into a irreversible hash.
-    });
-
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+        // Store hash in your password DB.
+        //this is going to be created using that user model here
+        const newUser = new User({
+            email: req.body.username,
+            password: hash //To turn that into a irreversible hash.
+        });
     newUser.save(function (err) {
         if (err) {
             console.log(err);
         } else {
             res.render("secrets");
         }
-    })
+    });
+  });
 })
 
 app.post("/login", function (req, res) {
     const username = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
 
     // username field comes from the user who's trying to log in 
     // and the email field is the one in our database that's got the saved data
@@ -79,11 +82,15 @@ app.post("/login", function (req, res) {
                 console.log(err);
             } else {
                 if (foundUser) { //Does that user with that email exist?
-                    if (foundUser.password === password) {
-                        res.render("secrets")
+                    bcrypt.compare(password, foundUser.password, function(err, result) {
+                        // result == true
+                        if (result === true) {
+                            res.render("secrets");
+                        }
+                    });
+
                 }
             }
-        }
     });
 
 });
