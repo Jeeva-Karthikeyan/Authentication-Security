@@ -8,6 +8,7 @@ const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const FacebookStrategy = require('passport-facebook');
 const findOrCreate = require("mongoose-findorcreate");
 
 const app = express();
@@ -40,7 +41,9 @@ mongoose.connect("mongodb://127.0.0.1:27017/endUSersDB", {
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId: String
+    googleId: String,
+    facebookId: String,
+    secret: String
 });
 
 //This is what we're going to use to hash and salting our passwords and to save our users into our MongoDB database.
@@ -78,6 +81,18 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 
 app.get("/", function (req, res) {
     res.render("home");
@@ -94,6 +109,17 @@ app.get("/auth/google/secrets",
         res.redirect("/secrets");
 });
 
+
+app.get('/auth/facebook',
+  passport.authenticate('facebook', { scope: ["public_profile"] }));
+
+app.get('/auth/facebook/secrets',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+  });
+
 app.get("/login", function (req, res) {
     res.render("login");
 });
@@ -103,13 +129,42 @@ app.get("/register", function (req, res) {
 });
 
 app.get("/secrets", function(req, res) {
-    //check if the user is authenticated and this is where we're relying on passport, session, passport-local,p-l-m
-    //nake sure that if a user is alreay logged in then we should simply  render secrets
+    User.find({"secret": {$ne: null}}, function(err, foundUser){
+        if(err) {
+            console.log(err);
+         } else {
+            if(foundUser) {
+                res.render("secrets", {userWithSecrets: foundUser});
+            }
+        }
+    });
+});
+
+app.get("/submit", function(req, res){
     if(req.isAuthenticated()){
-        res.render("secrets");
+        res.render("submit");
     } else {
         res.redirect("/login");
     }
+})
+
+app.post("/submit", function(req, res) {
+    const submittedSecret = req.body.secret;
+    
+    console.log(req.user.id);
+
+    User.findById(req.user.id, function (err, foundUser)  {
+        if(err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                foundUser.secret = submittedSecret;
+                foundUser.save(function(){
+                    res.redirect("/secrets");
+                });
+            }
+        }
+    });
 });
 
 app.get("/logout", function(req, res){
